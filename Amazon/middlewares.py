@@ -4,16 +4,13 @@
 #
 # See documentation in:
 # https://doc.scrapy.org/en/latest/topics/spider-middleware.html
-import base64
 import random
-import time
 
+import requests
 from scrapy import signals
 from scrapy.http import HtmlResponse
-from selenium import webdriver
-from selenium.webdriver import DesiredCapabilities
 
-from Amazon.settings import USER_AGENTS, PROXIES
+from Amazon.settings import USER_AGENTS
 
 
 class AmazonSpiderMiddleware(object):
@@ -118,49 +115,13 @@ class AmazonRandomUserAgentMiddleware(object):
         request.headers.setdefault("User-Agent", useragent)
 
 
-class AmazonProxiesMiddleware(object):
-    def process_request(self, request, spider):
-        # proxy = "http://maozhaojun:ntkn0npx@114.67.224.167:16819"
-        # request.meta['proxy'] = proxy
-        proxy = random.choice(PROXIES)
-        if proxy['user_passwd'] is None:
-            # 没有代理账户验证的代理使用方式
-            request.meta['proxy'] = "http://" + proxy['ip_port']
-        else:
-            # 对账户密码进行base64编码转换
-            base64_userpasswd = base64.b64encode(proxy['user_passwd'])
-            # 对应到代理服务器的信令格式里
-            request.headers['Proxy-Authorization'] = 'Basic ' + base64_userpasswd
-            request.meta['proxy'] = "http://" + proxy['ip_port']
-
-
 class Amazonspider(object):
-    def __init__(self):
-        dcap = dict(DesiredCapabilities.PHANTOMJS)
-        dcap['phantomjs.page.settings.userAgent'] = (
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:25.0) Gecko/20100101 Firefox/25.0'
-        )
-        self.driver = webdriver.PhantomJS(desired_capabilities=dcap)
-
     def process_request(self, request, spider):
-        print request.url
-        print '1111111111111111111111111111111111111111'
-        if 'node=' in request.url or 'rh=' in request.url or 'qid=' in request.url:
-            print '222222222222222222222222222'
-            self.driver.get(request.url)
-            print '33333333333333333333'
-            time.sleep(1)
-            # self.driver.save_screenshot('123.png')
-            for count in range(18):
-                try:
-                    self.driver.find_element_by_xpath('//div')
-                    html = self.driver.page_source
-                    return HtmlResponse(url=request.url, body=html.encode("utf-8"), encoding="utf-8", request=request)
-                except Exception as e:
-                    print '------------------'
-                    print request.url
-                    print e
-                    time.sleep(0.5)
-
-    def __del__(self):
-        self.driver.quit()
+        print u'请求%s' % request.url
+        response = requests.get(
+            request.url,
+            allow_redirects=False
+        )
+        html = response.content.decode('utf-8')
+        print u'响应%s' % response.url
+        return HtmlResponse(url=response.url, body=html.encode('utf-8'), request=request)
